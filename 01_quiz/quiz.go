@@ -73,23 +73,10 @@ func parseQuestions(file string) []Question {
 	return questions
 }
 
-const DEBUG = false
-
 func main() {
 	config := parseConfig()
-	if DEBUG {
-		fmt.Println(config)
-	}
-
 	file := readFile(config.filename)
-	if DEBUG {
-		fmt.Println(file)
-	}
-
 	questions := parseQuestions(file)
-	if DEBUG {
-		fmt.Println(questions)
-	}
 
 	score := 0
 
