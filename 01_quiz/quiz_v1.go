@@ -4,17 +4,14 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
-	"time"
 )
 
 const LINE_SEPARATOR = "\n"
 const QUESTION_SEPARATOR = ","
 
 type Config struct {
-	csv   string
-	limit int
+	csv string
 }
 
 type Question struct {
@@ -24,7 +21,6 @@ type Question struct {
 
 func parseConfig() Config {
 	csv := "problems.csv"
-	limit := 30
 
 	args := os.Args[1:]
 	numberOfArgs := len(args)
@@ -33,11 +29,9 @@ func parseConfig() Config {
 		arg := args[i]
 
 		if arg == "-h" || arg == "-help" {
-			println("Usage of ./quiz:")
+			println("Usage of ./quiz_v1:")
 			println(" -csv string")
 			println(" 	a csv file in the format of 'question,answer' (default \"problems.csv\")")
-			println(" -limit int")
-			println(" 	the time limit for the quiz in seconds (default 30)")
 			os.Exit(0)
 			break
 		}
@@ -45,15 +39,9 @@ func parseConfig() Config {
 		if arg == "-csv" {
 			csv = args[i+1]
 		}
-
-		if arg == "-limit" {
-			newLimit, err := strconv.Atoi(args[i+1])
-			handleError(err)
-			limit = newLimit
-		}
 	}
 
-	return Config{csv, limit}
+	return Config{csv}
 }
 
 func handleError(e error) {
@@ -85,22 +73,12 @@ func parseQuestions(file string) []Question {
 	return questions
 }
 
-func startTimer(timer *time.Timer, numberOfQuestions int, score *int) {
-	<-timer.C
-	fmt.Printf("\nTime is up! You score %d out of %d\n", *score, numberOfQuestions)
-	os.Exit(0)
-}
-
 func main() {
 	config := parseConfig()
 	file := readFile(config.csv)
 	questions := parseQuestions(file)
-	numberOfQuestions := len(questions)
 
 	score := 0
-
-	timer := time.NewTimer(time.Duration(config.limit) * time.Second)
-	go startTimer(timer, numberOfQuestions, &score)
 
 	for _, question := range questions {
 		fmt.Printf("%s=", question.question)
@@ -112,7 +90,6 @@ func main() {
 		}
 	}
 
-	timer.Stop()
-
+	numberOfQuestions := len(questions)
 	fmt.Printf("You score %d out of %d\n", score, numberOfQuestions)
 }
