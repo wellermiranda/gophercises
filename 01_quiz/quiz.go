@@ -70,20 +70,29 @@ func main() {
 	numberOfQuestions := len(problems)
 
 	score := 0
-
 	timer := time.NewTimer(time.Duration(config.limit) * time.Second)
-	go startTimer(timer, numberOfQuestions, &score)
 
+problem_loop:
 	for i, problem := range problems {
 		fmt.Printf("Problem #%d: %s = ", i+1, problem.question)
-		var answer string
-		fmt.Scanf("%s\n", &answer)
-		if answer == problem.answer {
-			score++
+
+		answerChannel := make(chan string)
+		go func() {
+			var answer string
+			fmt.Scanf("%s\n", &answer)
+			answerChannel <- answer
+		}()
+
+		select {
+		case <-timer.C:
+			fmt.Println()
+			break problem_loop
+		case answer := <-answerChannel:
+			if answer == problem.answer {
+				score++
+			}
 		}
 	}
-
-	timer.Stop()
 
 	fmt.Printf("You score %d out of %d\n", score, numberOfQuestions)
 }
