@@ -1,88 +1,60 @@
 package main
 
 import (
-	"bufio"
+	"encoding/csv"
+	"flag"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 )
-
-const LINE_SEPARATOR = "\n"
-const QUESTION_SEPARATOR = ","
 
 type Config struct {
 	csv   string
 	limit int
 }
 
-type Question struct {
+type Problem struct {
 	question string
 	answer   string
 }
 
 func parseConfig() Config {
-	csv := "problems.csv"
-	limit := 30
-
-	args := os.Args[1:]
-	numberOfArgs := len(args)
-
-	for i := 0; i < numberOfArgs; i++ {
-		arg := args[i]
-
-		if arg == "-h" || arg == "-help" {
-			println("Usage of ./quiz:")
-			println(" -csv string")
-			println(" 	a csv file in the format of 'question,answer' (default \"problems.csv\")")
-			println(" -limit int")
-			println(" 	the time limit for the quiz in seconds (default 30)")
-			os.Exit(0)
-			break
-		}
-
-		if arg == "-csv" {
-			csv = args[i+1]
-		}
-
-		if arg == "-limit" {
-			newLimit, err := strconv.Atoi(args[i+1])
-			handleError(err)
-			limit = newLimit
-		}
-	}
-
-	return Config{csv, limit}
+	csv := flag.String("csv", "problems.csv", "a csv file in the format of 'question,answer'")
+	limit := flag.Int("limit", 30, "the time limit for the quiz in seconds")
+	flag.Parse()
+	return Config{*csv, *limit}
 }
 
-func handleError(e error) {
+func handleError(e error, msg string) {
 	if e != nil {
-		panic(e)
+		fmt.Printf(msg)
+		os.Exit(1)
 	}
 }
 
-func readFile(filename string) string {
+func readFile(filename string) [][]string {
 	file, err := os.Open(filename)
-	handleError(err)
+	handleError(err, fmt.Sprintf("Failed to open the CSV file: %s\n", filename))
 
-	buffer := make([]byte, 500)
-	data, err := file.Read(buffer)
-	handleError(err)
+	reader := csv.NewReader(file)
+	lines, err := reader.ReadAll()
+	handleError(err, fmt.Sprintf("Failed to read the CSV file: %s\n", filename))
 
-	return string(buffer[:data])
+	return lines
 }
 
-func parseQuestions(file string) []Question {
-	lines := strings.Split(file, LINE_SEPARATOR)
-	questions := make([]Question, len(lines))
+func parseQuestions(lines [][]string) []Problem {
+	problems := make([]Problem, len(lines))
 
 	for i, line := range lines {
-		parts := strings.Split(line, QUESTION_SEPARATOR)
-		questions[i] = Question{question: parts[0], answer: parts[1]}
+		problems[i] = Problem{
+			question: line[0],
+			answer:   strings.TrimSpace(line[1]),
+		}
 	}
 
-	return questions
+	return problems
 }
 
 func startTimer(timer *time.Timer, numberOfQuestions int, score *int) {
@@ -93,21 +65,20 @@ func startTimer(timer *time.Timer, numberOfQuestions int, score *int) {
 
 func main() {
 	config := parseConfig()
-	file := readFile(config.csv)
-	questions := parseQuestions(file)
-	numberOfQuestions := len(questions)
+	lines := readFile(config.csv)
+	problems := parseQuestions(lines)
+	numberOfQuestions := len(problems)
 
 	score := 0
 
 	timer := time.NewTimer(time.Duration(config.limit) * time.Second)
 	go startTimer(timer, numberOfQuestions, &score)
 
-	for _, question := range questions {
-		fmt.Printf("%s=", question.question)
-		reader := bufio.NewReader(os.Stdin)
-		answerWithNewLine, _ := reader.ReadString(LINE_SEPARATOR[0])
-		answer := answerWithNewLine[0 : len(answerWithNewLine)-1]
-		if answer == question.answer {
+	for i, problem := range problems {
+		fmt.Printf("Problem #%d: %s = ", i+1, problem.question)
+		var answer string
+		fmt.Scanf("%s\n", &answer)
+		if answer == problem.answer {
 			score++
 		}
 	}
